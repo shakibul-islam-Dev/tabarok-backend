@@ -39,7 +39,7 @@ router.put(
     if (!Types.ObjectId.isValid(id)) {
       throw new ApiError(400, "Invalid slide ID");
     }
-    const data = validateBody(schemas.heroSlide, req.body);
+    const data = validateBody(schemas.heroSlide.partial(), req.body);
     const slide = await HeroSlide.findByIdAndUpdate(id, data, { new: true });
     if (!slide) {
       throw new ApiError(404, "Slide not found");

@@ -45,6 +45,8 @@ export interface IOrder {
   billingAddress?: IOrderAddress;
   paymentMethod: string;
   paymentStatus: PaymentStatus;
+  paymentId?: string;
+  paidAt?: Date;
   subtotal: number;
   deliveryFee: number;
   discount: number;
@@ -121,6 +123,8 @@ const orderSchema = new Schema<IOrder>(
       enum: ["pending", "paid", "failed", "refunded"],
       default: "pending",
     },
+    paymentId: { type: String },
+    paidAt: { type: Date },
     subtotal: { type: Number, required: true, min: 0 },
     deliveryFee: { type: Number, default: 0, min: 0 },
     discount: { type: Number, default: 0, min: 0 },

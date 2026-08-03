@@ -80,7 +80,7 @@ export const schemas = {
     slug: z.string().min(1).max(100).optional(),
     description: z.string().optional(),
     image: z.string().url("Image must be a valid URL").optional(),
-    type: z.enum(["collection", "signature", "budget", "accessory", "other"]).default("collection"),
+    type: z.enum(["collection", "signature", "budget", "accessory", "menu-group"]).default("collection"),
     parent: objectId.optional(),
     order: z.number().int().default(0),
     isActive: z.boolean().optional(),
@@ -287,6 +287,20 @@ export const schemas = {
 
   statusUpdate: z.object({
     status: z.string().min(1),
+  }),
+
+  // Payments
+  checkoutOrder: z.object({
+    orderId: objectId,
+    successPath: z.string().optional(),
+    cancelPath: z.string().optional(),
+  }),
+
+  checkoutPoints: z.object({
+    packageId: z.string().optional(),
+    amount: z.number().int().positive().optional(),
+    successPath: z.string().optional(),
+    cancelPath: z.string().optional(),
   }),
 };
 

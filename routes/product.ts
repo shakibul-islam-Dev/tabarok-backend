@@ -93,10 +93,31 @@ router.get(
 
 router.use(protect, requireAdmin);
 
+/**
+ * Builds a unique URL slug from a product title.
+ * Called when an admin omits the optional `slug` field.
+ */
+async function uniqueProductSlug(title: string): Promise<string> {
+  const base =
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "") || "product";
+  let slug = base;
+  let n = 2;
+  while (await Product.exists({ slug })) {
+    slug = `${base}-${n++}`;
+  }
+  return slug;
+}
+
 router.post(
   "/",
   asyncHandler(async (req: BetterAuthRequest, res: Response) => {
     const data = validateBody(schemas.productCreate, req.body);
+    if (!data.slug) {
+      data.slug = await uniqueProductSlug(data.title);
+    }
     const product = await Product.create(data);
     res.status(201).json(product);
   })

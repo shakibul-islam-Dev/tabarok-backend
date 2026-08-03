@@ -4,9 +4,13 @@ import cors from "cors";
 import { toNodeHandler } from "better-auth/node";
 import { ZodError } from "zod";
 import rateLimit from "express-rate-limit";
+import path from "path";
 import connectDB from "./config/db.js";
 import { auth } from "./lib/auth.js";
 import { ApiError } from "./utils/ApiError.js";
+import { uploadDir } from "./utils/upload.js";
+import paymentRouter, { paymentWebhook } from "./routes/payment.js";
+import uploadRouter from "./routes/upload.js";
 import authRouter from "./routes/auth.js";
 import adminRouter from "./routes/admin.js";
 import productRouter from "./routes/product.js";
@@ -71,6 +75,17 @@ app.use("/api/auth/", authLimiter);
 // Mount Better Auth handler BEFORE express.json()
 app.all("/api/auth/*", toNodeHandler(auth));
 
+// Serve uploaded files statically.
+app.use("/uploads", express.static(uploadDir));
+
+// Stripe webhook needs the raw request body for signature verification,
+// so it is mounted BEFORE express.json().
+app.post(
+  "/api/payments/webhook",
+  express.raw({ type: "application/json" }),
+  paymentWebhook
+);
+
 // Body parser only for non-Better-Auth routes
 app.use(express.json());
 
@@ -97,6 +112,8 @@ app.use("/api/reviews", reviewRouter);
 app.use("/api/redeem-codes", redeemCodeRouter);
 app.use("/api/hero-slides", heroSlideRouter);
 app.use("/api/outlets", outletRouter);
+app.use("/api/uploads", uploadRouter);
+app.use("/api/payments", paymentRouter);
 
 app.use((_req: Request, _res: Response, _next: NextFunction) => {
   throw new ApiError(404, "Route not found");

@@ -3,7 +3,7 @@ import { Schema, model, HydratedDocument } from "mongoose";
 export interface IOutlet {
   name: string;
   area: string;
-  hours: string;
+  hours?: string;
   phone?: string;
   coordinates?: {
     lat: number;
@@ -18,7 +18,7 @@ const outletSchema = new Schema<IOutlet>(
   {
     name: { type: String, required: true, trim: true },
     area: { type: String, required: true },
-    hours: { type: String, required: true },
+    hours: { type: String },
     phone: { type: String },
     coordinates: {
       lat: { type: Number },

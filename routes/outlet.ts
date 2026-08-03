@@ -39,7 +39,7 @@ router.put(
     if (!Types.ObjectId.isValid(id)) {
       throw new ApiError(400, "Invalid outlet ID");
     }
-    const data = validateBody(schemas.outlet, req.body);
+    const data = validateBody(schemas.outlet.partial(), req.body);
     const outlet = await Outlet.findByIdAndUpdate(id, data, { new: true });
     if (!outlet) {
       throw new ApiError(404, "Outlet not found");

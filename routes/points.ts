@@ -275,22 +275,27 @@ router.post(
     }
 
     const userId = String(req.user!._id);
-    const result = await pointsService.earnPoints({
-      userId,
-      type: "topup",
-      amount: points,
-      description: `Purchased ${points} points`,
-      referenceType: "purchase",
-      referenceId: transactionId,
-      metadata: {
-        packageId,
-        price,
-        currency: "BDT",
-        paymentMethod,
-        transactionId,
-        purchaseAmount: price,
+    const result = await pointsService.earnPoints(
+      {
+        userId,
+        type: "topup",
+        amount: points,
+        description: `Purchased ${points} points`,
+        referenceType: "purchase",
+        referenceId: transactionId,
+        metadata: {
+          packageId,
+          price,
+          currency: "BDT",
+          paymentMethod,
+          transactionId,
+          purchaseAmount: price,
+        },
       },
-    });
+      // Top-ups are real paid purchases; they must never be penalized by
+      // fraud detection (the Stripe webhook path already skips it too).
+      { skipFraudCheck: true }
+    );
 
     if (!result.success) {
       throw new ApiError(400, result.message ?? "Purchase points rejected");

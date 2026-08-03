@@ -16,7 +16,12 @@ export interface BetterAuthRequest extends Request {
 
 /**
  * Synchronizes the local User document with the Better Auth session user.
- * This keeps role, ban status, name, and email consistent across sign-ins.
+ * This keeps role, name, and email consistent across sign-ins.
+ *
+ * Note: `banned` is deliberately NOT synced from Better Auth. The local User
+ * document is the single source of truth for bans (the admin ban endpoint
+ * writes it and `protect` enforces it). Better Auth stores `banned: false`
+ * on every user, so syncing it would silently undo local bans.
  */
 async function syncLocalUser(betterUser: AuthUser): Promise<UserDoc> {
   const email = betterUser.email?.toLowerCase().trim();
@@ -46,9 +51,6 @@ async function syncLocalUser(betterUser: AuthUser): Promise<UserDoc> {
   if (betterUser.image && user.image !== betterUser.image) updates.image = betterUser.image;
   if (betterUser.role && user.role !== betterUser.role) {
     updates.role = betterUser.role as "user" | "admin" | "superadmin";
-  }
-  if (typeof betterUser.banned === "boolean" && user.banned !== betterUser.banned) {
-    updates.banned = betterUser.banned;
   }
   if (
     typeof betterUser.emailVerified === "boolean" &&

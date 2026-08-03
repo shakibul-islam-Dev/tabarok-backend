@@ -143,7 +143,9 @@ export class ReconciliationService {
         correctionTransaction,
       };
     } catch (error) {
-      await session.abortTransaction();
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
       throw error;
     } finally {
       session.endSession();

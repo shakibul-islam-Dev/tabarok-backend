@@ -45,10 +45,31 @@ router.get(
 
 router.use(protect, requireAdmin);
 
+/**
+ * Builds a unique URL slug from a category title.
+ * Called when an admin omits the optional `slug` field.
+ */
+async function uniqueCategorySlug(title: string): Promise<string> {
+  const base =
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "") || "category";
+  let slug = base;
+  let n = 2;
+  while (await Category.exists({ slug })) {
+    slug = `${base}-${n++}`;
+  }
+  return slug;
+}
+
 router.post(
   "/",
   asyncHandler(async (req: BetterAuthRequest, res: Response) => {
     const data = validateBody(schemas.category, req.body);
+    if (!data.slug) {
+      data.slug = await uniqueCategorySlug(data.title);
+    }
     const category = await Category.create(data);
     res.status(201).json(category);
   })
@@ -61,7 +82,7 @@ router.put(
     if (!Types.ObjectId.isValid(id)) {
       throw new ApiError(400, "Invalid category ID");
     }
-    const data = validateBody(schemas.category, req.body);
+    const data = validateBody(schemas.category.partial(), req.body);
     const category = await Category.findByIdAndUpdate(id, data, { new: true });
     if (!category) {
       throw new ApiError(404, "Category not found");

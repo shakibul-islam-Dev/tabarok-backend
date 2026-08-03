@@ -14,6 +14,8 @@ This backend module powers the points economy for the e-commerce platform. Users
 4. [Database Schema](#database-schema)
 5. [API Endpoints](#api-endpoints)
 6. [Environment Variables](#environment-variables)
+7. [File Uploads](#file-uploads)
+8. [Stripe Payments](#stripe-payments)
 
 ---
 
@@ -407,11 +409,73 @@ FRAUD_MAX_ADS_PER_HOUR=5
 FRAUD_ADJUST_THRESHOLD=20
 FRAUD_REVIEW_THRESHOLD=50
 FRAUD_REJECT_THRESHOLD=80
+
+# Stripe Payments
+STRIPE_SECRET_KEY=sk_test_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+STRIPE_CURRENCY=usd
+
+# File uploads
+UPLOAD_DIR=uploads
+MAX_UPLOAD_SIZE_MB=10
 ```
 
 ---
 
-## Notes
+## File Uploads
+
+Files are uploaded to the local `uploads/` directory (configurable via `UPLOAD_DIR`) and served statically at `/uploads/<filename>`.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/uploads` | Single file. Multipart field `file`. Returns `{ url, filename, size, mimetype }`. |
+| POST | `/api/uploads/multiple` | Multiple files. Multipart field `files` (max 10). Returns `{ urls, files }`. |
+
+All upload endpoints require an authenticated session. Allowed types: JPEG, PNG, GIF, WebP, AVIF, SVG, PDF. Max size is `MAX_UPLOAD_SIZE_MB` (default 10 MB).
+
+The returned `url` is a full absolute URL built from `NEXT_PUBLIC_URL` and can be stored directly in `product.image`, `category.image`, `heroSlide.image`, `customOrder.designFileUrl`, etc.
+
+> Note for Vercel/serverless: local disk storage does not persist across function instances. Use a cloud store (S3/Cloudinary) in production.
+
+---
+
+## Stripe Payments
+
+The API uses Stripe **hosted Checkout** so the Next.js frontend only needs to redirect the user to the returned `url`.
+
+### 1. Create a Checkout Session (server-side)
+
+```http
+POST /api/payments/checkout/order
+Authorization: Bearer <session cookie>
+Content-Type: application/json
+
+{ "orderId": "6a6df51e8fb429f727b3773f" }
+```
+
+```http
+POST /api/payments/checkout/points
+Content-Type: application/json
+
+{ "packageId": "pkg-small" }        // or { "amount": 500 }
+```
+
+Both return `{ url, sessionId }`. The frontend should redirect with `window.location.href = url` (or `router.push(url)`).
+
+### 2. Handle the redirect (frontend)
+
+Stripe redirects the user back to `success_url` (default `/payment/success?session_id={CHECKOUT_SESSION_ID}`) or `cancel_url` (default `/checkout` or `/points`). Custom paths can be passed via `successPath`/`cancelPath` in the request body.
+
+### 3. Webhook (server-side, fulfillment)
+
+`POST /api/payments/webhook` verifies the `stripe-signature` header against `STRIPE_WEBHOOK_SECRET`:
+
+- `checkout.session.completed` with `metadata.type = "order"` → sets the order to `paymentStatus: "paid"`, stores the payment id, and records `paidAt`.
+- `checkout.session.completed` with `metadata.type = "points"` → credits the user's points balance for the purchased top-up.
+
+Fulfillment is idempotent; retries from Stripe are safe. Configure the webhook endpoint in the Stripe Dashboard as `https://<backend>/api/payments/webhook`, selecting the `checkout.session.completed` event.
+
+> `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are placeholders in `.env` — replace them with real test/live keys from the Stripe Dashboard. Stripe does not support BDT; `STRIPE_CURRENCY` defaults to `usd`.
 
 - All point mutations are atomic MongoDB transactions.
 - Suspicious transactions are logged with full metadata for review.

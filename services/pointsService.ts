@@ -223,7 +223,9 @@ export class PointsService {
         fraudResult,
       };
     } catch (error) {
-      if (!externalSession) await session.abortTransaction();
+      if (!externalSession && session.inTransaction()) {
+        await session.abortTransaction();
+      }
       throw error;
     } finally {
       if (!externalSession) session.endSession();
@@ -348,7 +350,9 @@ export class PointsService {
         ...result,
       };
     } catch (error) {
-      if (!externalSession) await session.abortTransaction();
+      if (!externalSession && session.inTransaction()) {
+        await session.abortTransaction();
+      }
       throw error;
     } finally {
       if (!externalSession) session.endSession();
@@ -448,7 +452,9 @@ export class PointsService {
         ...result,
       };
     } catch (error) {
-      await session.abortTransaction();
+      if (session.inTransaction()) {
+        await session.abortTransaction();
+      }
       throw error;
     } finally {
       session.endSession();
